@@ -1,25 +1,107 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "S.Sriranjani"
+date: "20 August 2018"
+output: html_document
 ---
+&nbsp;
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
 
-## Loading and preprocessing the data
+###1. Code for reading in the dataset
 
+```{r read}
+dt<-read.csv("D:/Coursera/Data Science/activity.csv")
+```
 
+###2. Histogram of the total number of steps taken each day
 
-## What is mean total number of steps taken per day?
+```{r histogram}
+d1<-dt %>% group_by(date) %>% summarise(steps=sum(steps))
+hist(d1$steps)
+```
 
+###3. Mean and median number of steps taken each day
 
+```{r mean}
+mean(d1$steps,na.rm=TRUE)
+```
 
-## What is the average daily activity pattern?
+```{r median}
+median(d1$steps,na.rm=TRUE)
+```
 
+###4. Time series plot of the average number of steps taken
 
+```{r time series plot}
+d2<-dt %>% group_by(interval) %>% summarise(steps=mean(steps,na.rm=TRUE))
+plot(d2$interval,d2$steps,type="l")
+```
 
-## Imputing missing values
+###5. The 5-minute interval that, on average, contains the maximum number of steps
 
+```{r maximum_steps}
+d2[d2$steps==max(d2$steps),]
+```
 
+Maximum number of steps is at interval `r d2[d2$steps==max(d2$steps),1]`
 
-## Are there differences in activity patterns between weekdays and weekends?
+###6.Code to describe and show a strategy for imputing missing data
+The total number of missing values in the dataset
+
+```{r total_na}
+sum(is.na(dt$steps))
+```
+
+We would replace the missing values(NAs) with the average of steps taken in the 5-minute interval averaged across all days.
+
+Creating a new data set with the missing data filled in - 
+
+```{r new_dataset}
+newdt=merge(dt,d2,by="interval")
+newdt[is.na(newdt$steps.x),"steps.x"]<-newdt[is.na(newdt$steps.x),"steps.y"]
+newdt$steps<-newdt$steps.x
+newdt$steps.x<-NULL
+newdt$steps.y<-NULL
+```
+
+###7.Histogram of the total number of steps taken each day after missing values are imputed
+
+```{r new_histogram}
+newd1<-newdt %>% group_by(date) %>% summarise(steps=sum(steps))
+hist(newd1$steps)
+```
+
+Mean and median number of steps taken each day after missing values are imputed
+
+```{r new_mean}
+mean(newd1$steps)
+```
+
+```{r new_median}
+median(newd1$steps,na.rm=TRUE)
+```
+###8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+Adding weekday column to the data, Creating two new datasets - dtwe for weekend data and dtwd for weekdays data
+
+```{r weekday}
+newdt$weekday<-weekdays(as.Date(newdt$date))
+dtwe<-newdt[newdt$weekday %in% c("Saturday","Sunday"),]
+dtwd<-newdt[!(newdt$weekday %in% c("Saturday","Sunday")),]
+head(dtwd)
+head(dtwe)
+```
+Panel plot
+```{r panel plot}
+dtwe<-dtwe %>% group_by(interval) %>% summarise(steps=mean(steps,na.rm=TRUE))
+dtwd<-dtwd %>% group_by(interval) %>% summarise(steps=mean(steps,na.rm=TRUE))
+par(mfrow=c(1,2))
+plot(dtwd$interval,dtwd$steps,type="l",ylim=c(0,250),xlab="Inteval",ylab="Steps")
+title("Weekdays")
+plot(dtwe$interval,dtwe$steps,type="l",ylim=c(0,250),xlab="Inteval",ylab="Steps")
+title("Weekends")
+```
